@@ -127,5 +127,4 @@ organizations = data['organizations']
 - `relation does not exist`: примените `schema.sql`, затем `seed.sql`.
 - `ModuleNotFoundError`: активируйте `.venv` и выполните установку зависимостей.
 
-ER-модель: [docs/er-diagram.md](docs/er-diagram.md). Подготовка к защите:
-[docs/DEFENSE_GUIDE.md](docs/DEFENSE_GUIDE.md).
+ER-модель: [docs/er-diagram.md](docs/er-diagram.md).
