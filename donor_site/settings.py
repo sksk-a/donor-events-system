@@ -7,6 +7,9 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "local-study-donor-events-only"
 DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 INSTALLED_APPS = [
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
     "django.contrib.staticfiles",
     "homepage",
     "events",
@@ -16,8 +19,10 @@ INSTALLED_APPS = [
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 ROOT_URLCONF = "donor_site.urls"
@@ -31,8 +36,11 @@ TEMPLATES = [{
 }]
 WSGI_APPLICATION = "donor_site.wsgi.application"
 ASGI_APPLICATION = "donor_site.asgi.application"
-# Ни веб-сессии, ни ORM на этапах ПР5–ПР6 не требуются.
-DATABASES = {}
+# SQLite содержит только служебные таблицы Django. Предметные данные — JSON.
+DATABASES = {"default": {
+    "ENGINE": "django.db.backends.sqlite3",
+    "NAME": BASE_DIR / "db.sqlite3",
+}}
 LANGUAGE_CODE = "ru-ru"
 TIME_ZONE = "Europe/Moscow"
 USE_I18N = True

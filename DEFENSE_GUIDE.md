@@ -81,7 +81,7 @@ GET /events/1/
 | tools/prepare_defense_data.py | Создаёт отдельную явно учебную копию для демонстрации регистраций |
 
 Наличие __init__.py делает каталог Python-пакетом. Пустые models.py/admin.py/migrations
-не создавались: на этом этапе нет ORM и админки, Django-приложения корректно
+не создавались: на этом этапе нет предметных ORM-моделей и админки, Django-приложения корректно
 обнаруживаются по пакетам в INSTALLED_APPS. Participant — донор предметной области,
 не Django User. Аутентификация в этих работах не реализуется.
 
@@ -125,7 +125,7 @@ return render(request, "events/detail.html", context,
 ## Сценарий демонстрации за 5 минут
 
 1. **0:00–0:40.** В корне репозитория активировать .venv; показать `python -m django --version`,
-   `python manage.py check`, запустить `python manage.py runserver`.
+   `python manage.py migrate`, `python manage.py check`, запустить `python manage.py runserver`.
 2. **0:40–1:30.** Открыть http://127.0.0.1:8000/. Перейти к мероприятиям,
    открыть /events/1/, показать дату, статус, лимит, свободные места и ссылку организатора.
 3. **1:30–2:00.** Перейти к организации и обратно; открыть участников и карточку донора.
@@ -544,7 +544,7 @@ View получает данные, ищет объект, готовит кон
 | Проверить JavaScript | main.js: textContent заменить на `Год: ` + new Date().getFullYear() | Network 200 означает загрузку; отсутствие эффекта при 200 искать в Console/селекторе |
 | Объяснить структуру шаблонов | Показать events/templates/events и organizations/templates/organizations | APP_DIRS находит файлы, префиксы не дают конфликтовать list.html |
 | Объяснить типы | web_data.py и app/models/event.py | id/лимит — int, title — str, event_date — date, status — Enum |
-| Объяснить будущую ORM | Показать DATABASES={} и прежние dataclass | Веб не требует migrate; SQL-консоль — отдельная сохранённая реализация |
+| Объяснить будущую ORM | Показать DATABASES со служебной SQLite и прежние dataclass | migrate создаёт встроенные auth/session-таблицы; предметные данные читаются из JSON; SQL-консоль сохранена отдельно |
 | Показать общую page() из ПР5 | `git show 15791ad:homepage/views.py` | В ПР5 title/content вставлялись в общий HTML; в ПР6 эту роль играет base.html |
 | Изменить страницу в состоянии ПР5 | Показать строку вызова page в git show; объяснить изменение первого аргумента title | Для фактического запуска старой версии нужен отдельный checkout/worktree; не откатывать текущую папку на защите |
 
@@ -573,6 +573,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 python -m django --version
+python manage.py migrate
 python manage.py check
 python manage.py runserver
 python manage.py shell
@@ -586,7 +587,7 @@ python main.py
 
 Без активации заменить python на `.venv\Scripts\python`.
 Для консольных операций требуется отдельно настроенный PostgreSQL по README.
-`makemigrations`/`migrate` нужны при появлении Django ORM, а в ПР5/ПР6 не требуются.
+`migrate` по п. 5.6.1 ПР5 создаёт служебные таблицы auth/contenttypes/sessions в SQLite. Миграции выполнены при завершении ПР6. `makemigrations` для предметных сущностей сейчас не требуется: Event/Participant остаются dataclass, а JSON — источником данных. Это не перенос предметной области в ORM.
 
 ```powershell
 git status
