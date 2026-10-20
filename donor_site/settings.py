@@ -39,4 +39,8 @@ USE_I18N = True
 USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-JSON_DATA_FILE = BASE_DIR / "data" / "sample_data.json"
+JSON_DATA_FILE = Path(os.environ.get(
+    "DONOR_JSON_FILE", str(BASE_DIR / "data" / "sample_data.json"),
+))
+if not JSON_DATA_FILE.is_absolute():
+    JSON_DATA_FILE = BASE_DIR / JSON_DATA_FILE

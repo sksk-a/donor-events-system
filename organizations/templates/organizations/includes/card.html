@@ -1,0 +1,7 @@
+<article class="card entity-card">
+  <div class="card-body">
+    <h2 class="h4">{{ item.name|default:"Без названия" }}</h2>
+    <p class="card-meta">{{ item.city }}</p><p>{{ item.address }}</p>
+    <a class="btn btn-outline-danger mt-3" href="{% url 'organizations:detail' item.id %}">Подробнее<span class="visually-hidden">: {{ item.name }}</span></a>
+  </div>
+</article>

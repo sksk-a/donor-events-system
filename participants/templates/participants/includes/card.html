@@ -1,0 +1,8 @@
+<article class="card entity-card">
+  <div class="card-body">
+    <h2 class="h4">{{ item.full_name|default:"Без названия" }}</h2>
+    <p class="card-meta">Группа крови: {{ item.blood_type.value }}</p>
+    {% if item.active %}<span class="status status-positive">Активен</span>{% else %}<span class="status status-muted">Неактивен</span>{% endif %}
+    <a class="btn btn-outline-danger mt-3" href="{% url 'participants:detail' item.id %}">Подробнее<span class="visually-hidden">: {{ item.full_name }}</span></a>
+  </div>
+</article>

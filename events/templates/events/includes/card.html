@@ -1,0 +1,9 @@
+<article class="card entity-card">
+  <div class="card-body">
+    <h2 class="h4">{{ item.title|default:"Без названия" }}</h2>
+    <p class="card-meta">{{ item.event_date|date:"d.m.Y" }} · {{ item.city }}</p>
+    <p>{{ item.description|default:"Описание пока не добавлено" }}</p>
+    {% include "includes/status.html" with status=item.status only %}
+    <a class="btn btn-outline-danger mt-3" href="{% url 'events:detail' item.id %}">Подробнее<span class="visually-hidden">: {{ item.title }}</span></a>
+  </div>
+</article>

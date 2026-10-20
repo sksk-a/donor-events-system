@@ -1,0 +1,16 @@
+{% load static %}
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href="{% url 'homepage:index' %}">
+      <img src="{% static 'homepage/img/logo.svg' %}" width="38" height="44" alt="Логотип: капля крови с сердцем">
+      <span>Донорские<br>мероприятия</span>
+    </a>
+    <nav class="site-nav" aria-label="Основная навигация">
+      <a href="{% url 'homepage:index' %}" {% if request.resolver_match.namespace == 'homepage' %}aria-current="page"{% endif %}>Главная</a>
+      <a href="{% url 'events:list' %}" {% if request.resolver_match.namespace == 'events' %}aria-current="page"{% endif %}>Мероприятия</a>
+      <a href="{% url 'organizations:list' %}" {% if request.resolver_match.namespace == 'organizations' %}aria-current="page"{% endif %}>Организации</a>
+      <a href="{% url 'participants:list' %}" {% if request.resolver_match.namespace == 'participants' %}aria-current="page"{% endif %}>Участники</a>
+      <a href="{% url 'registrations:list' %}" {% if request.resolver_match.namespace == 'registrations' %}aria-current="page"{% endif %}>Регистрации</a>
+    </nav>
+  </div>
+</header>

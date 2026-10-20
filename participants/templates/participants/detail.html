@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}{{ item.full_name }}{% else %}Объект не найден{% endif %} — Донорские мероприятия{% endblock %}
+{% block content %}
+  {% if item %}
+    <p class="eyebrow">Участник · №{{ item.id }}</p>
+    <h1>{{ item.full_name|default:"Без названия" }}</h1>
+    <article class="card detail-card"><div class="card-body">
+      <dl class="details">
+        <div><dt>Дата рождения</dt><dd>{{ item.birth_date|date:"d.m.Y" }}</dd></div>
+        <div><dt>Группа крови</dt><dd>{{ item.blood_type.value }}</dd></div>
+        <div><dt>Телефон</dt><dd>{{ item.phone }}</dd></div>
+        <div><dt>Email</dt><dd>{{ item.email|default:"Не указан" }}</dd></div>
+      </dl>
+
+      <p>{% if item.active %}<span class="status status-positive">Активен</span>{% else %}<span class="status status-muted">Неактивен</span>{% endif %}</p>
+    </div></article>
+  {% else %}
+    <div class="empty-state"><p class="eyebrow">Ошибка 404</p><h1>Объект не найден</h1><p>Запись с таким идентификатором отсутствует.</p></div>
+  {% endif %}
+  <a class="btn btn-outline-secondary mt-4" href="{% url 'participants:list' %}">← К списку</a>
+{% endblock %}

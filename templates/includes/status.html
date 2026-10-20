@@ -1,0 +1,17 @@
+{% if status.value == 'CANCELLED' %}
+  <span class="badge status status-muted">Отменено</span>
+{% elif status.value == 'COMPLETED' %}
+  <span class="badge status status-muted">Завершено</span>
+{% elif status.value == 'PLANNED' %}
+  <span class="badge status status-planned">Запланировано</span>
+{% elif status.value == 'OPEN' %}
+  <span class="badge status status-positive">Открыто</span>
+{% elif status.value == 'CONFIRMED' %}
+  <span class="badge status status-positive">Подтверждено</span>
+{% elif status.value == 'ATTENDED' %}
+  <span class="badge status status-positive">Посетил</span>
+{% elif status.value == 'REGISTERED' %}
+  <span class="badge status status-planned">Зарегистрирован</span>
+{% else %}
+  <span class="badge status status-muted">{{ status.value|default:"Статус не указан" }}</span>
+{% endif %}

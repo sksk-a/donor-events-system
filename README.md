@@ -28,9 +28,9 @@
 - Экспорт данных в Excel для отчетности
 - Валидация бизнес-правил (проверка лимитов мест, дат, статусов)
 
-## Стек и архитектура
+## Стек и архитектура консольной версии
 
-Python 3.11+, PostgreSQL, psycopg 3, openpyxl, python-dotenv, pytest, flake8. Поток вызова:
+Python 3.11+, PostgreSQL, psycopg 3, openpyxl, python-dotenv, pytest, flake8; веб-слой — Django 5.2. Поток вызова:
 `ConsoleApp -> Service -> Repository -> PostgreSQL`. Модели — dataclass и Enum; SQL расположен
 только в репозиториях, правила — только в сервисах.
 
@@ -94,7 +94,7 @@ Python-сортировка по четырем полям, 11 статисти�
 
 ## Тестирование и качество кода
 
-Проект включает 49 автоматических тестов с использованием pytest:
+Исходный проект включает 49 автоматических тестов; после ПР6 всего 74 проверки (25 новых HTTP/JSON проверок) с использованием pytest:
 
 ```powershell
 # Запуск всех тестов
@@ -168,7 +168,7 @@ organizations = data['organizations']
 ER-модель: [docs/er-diagram.md](docs/er-diagram.md).
 
 
-## Веб-версия: ПР5
+## Веб-версия: ПР5 и ПР6
 
 Django 5.2 добавлен к существующему проекту. PostgreSQL нужен только консольной версии.
 Веб-версия читает `data/sample_data.json` существующим `JsonHandler`; адаптер
@@ -200,7 +200,7 @@ python manage.py runserver
 `donor_site/` содержит settings, корневой urls, wsgi/asgi; `manage.py` запускает команды Django.
 Каждое веб-приложение зарегистрировано в INSTALLED_APPS и имеет свой urls.py и views.py.
 Донор Participant — предметная сущность, а не учётная запись Django User.
-В ПР5 общий HTML собирает `homepage.views.page()`, подключающий Bootstrap 5.3.3 через CDN.
+В коммите ПР5 общий HTML собирала `homepage.views.page()`. В ПР6 все обработчики используют render() и шаблоны. Bootstrap 5.3.3 подключён через CDN.
 Данные экранируются, отсутствующий объект возвращает 404.
 Собственный handler404 в корневом urls применяется при DEBUG=False.
 
@@ -218,3 +218,79 @@ Remove-Item Env:DJANGO_DEBUG
 
 Проверки: `python manage.py check`, `python -m pytest -v`, `python -m flake8 . --extend-exclude=venv`.
 Консольные CRUD, Excel, SQL-репозитории и все прежние классы сохранены; их описание приведено выше.
+
+
+### Шаблоны и статические файлы (ПР6)
+
+Поток: `URL → view → JsonHandler → dataclass → context → render → template → HTML`.
+`templates/base.html` содержит каркас и блоки title/content, подключает Bootstrap,
+собственный CSS, SVG и JavaScript. `templates/includes/navigation.html` — общая навигация,
+`templates/includes/status.html` — статусы. Каждый дочерний шаблон использует extends/block.
+
+```text
+homepage/templates/homepage/index.html     главная
+<приложение>/templates/<приложение>/
+  list.html                               for/empty, length, include
+  detail.html                             if item, date/default, ссылки
+  includes/card.html                      карточка объекта
+homepage/static/homepage/
+  css/style.css                           фирменное оформление и адаптивная сетка
+  js/main.js                              текущий год в подвале
+  img/logo.svg                            логотип: капля с сердцем
+```
+
+Карточка мероприятия повторно используется на главной и в списке; include with/only
+передаёт item. Контексты передаются словарями, отсутствующий объект — item=None;
+шаблон показывает else, а view задаёт status=404. Пустые коллекции обрабатывает empty.
+Даты преобразуются в date на этапе загрузки, поэтому date:"d.m.Y" работает на реальных полях.
+Фильтры length/default применяются для количества и значений по умолчанию.
+
+Имена: `homepage:index`, `events:list/detail`, `organizations:list/detail`,
+`participants:list/detail`, `registrations:list/detail`. Все ссылки между страницами
+строятся тегом url, пути CSS/JS/SVG — static после load static.
+APP_DIRS=True обнаруживает шаблоны приложений, DIRS добавляет общие templates.
+
+JavaScript с defer обновляет #current-year и добавляет ему data-updated-by="javascript".
+У base.html есть серверный запасной год для браузера без JS. Веб-интерфейс не формирует
+HTML внутри Python: page() полностью удалена. Код ПР5: `git show 15791ad:homepage/views.py`.
+
+### Проверка и демонстрация
+
+```powershell
+python manage.py findstatic homepage/css/style.css homepage/js/main.js homepage/img/logo.svg
+python -m pytest -v
+python -m flake8 . --extend-exclude=venv
+```
+
+Полные фактические результаты: REPORT_PR5.md и REPORT_PR6.md.
+Подготовка к защите: DEFENSE_GUIDE.md (52 ответа ПР5, 30 ответов ПР6, сценарий и задания).
+Перечень изменённых файлов: CHANGED_FILES.md.
+
+Чтобы показать подтверждённую и отменённую регистрации, создать **отдельную учебную копию**:
+
+```powershell
+python tools/prepare_defense_data.py
+$env:DONOR_JSON_FILE = "test-results/defense_data.json"
+$env:DJANGO_DEBUG = "0"
+python manage.py runserver 8001 --noreload --insecure
+# После остановки Ctrl+C:
+Remove-Item Env:DONOR_JSON_FILE
+Remove-Item Env:DJANGO_DEBUG
+```
+
+Адрес: http://127.0.0.1:8001/registrations/. Две добавленные записи явно помечены
+учебными в notes. Источник sample_data.json не изменяется. Свободных мест будет 49:
+отменённая регистрация не занимает место. /nonexistent/ покажет собственную 404.
+--insecure применяется только для локальной демонстрации static при DEBUG=False.
+При обычном запуске на 8000 используется исходный JSON с пустым списком регистраций.
+
+### Границы текущего этапа
+
+Веб-часть предназначена для просмотра; создание, изменение и удаление через формы,
+авторизация и Django ORM — следующие этапы. PostgreSQL-консоль сохранена отдельно;
+она не синхронизирует свои записи с JSON веб-версии. Установка PostgreSQL и migrate
+для запуска веб-интерфейса не нужны. Дата/статус исходного события отображаются
+как хранятся в JSON; прошедшая дата не изменяет статус автоматически.
+
+Материалы Яндекс Практикума и «Блогикум» в личном аккаунте не отмечались выполненными.
+Git-коммиты ПР5 и ПР6 локальные; отправка на GitHub не выполнялась.

@@ -31,7 +31,7 @@ def test_existing_pages(client, path):
     response = client.get(path)
     assert response.status_code == 200
     assert 'charset="UTF-8"' in response.content.decode()
-    assert "Донор" in client.get("/").content.decode() or "донор" in client.get("/").content.decode()
+    assert '<html lang="ru">' in response.content.decode()
 
 
 @pytest.mark.parametrize("section", [
@@ -88,6 +88,10 @@ def test_registration_links_and_cancelled_capacity(client, tmp_path):
             text = response.content.decode()
             assert '/events/1/' in text
             assert f'/participants/{entity_id}/' in text
+            expected = "Подтверждено" if entity_id == 1 else "Отменено"
+            assert expected in text
+        assert "Подтверждено" in client.get("/registrations/").content.decode()
+        assert "Отменено" in client.get("/registrations/").content.decode()
 
 
 def test_json_text_is_escaped(client, tmp_path):
@@ -101,3 +105,26 @@ def test_json_text_is_escaped(client, tmp_path):
             text = client.get(url).content.decode()
             assert '<script>alert(' not in text
             assert '&lt;script&gt;' in text
+
+
+def test_template_date_default_and_related_organization(client, tmp_path):
+    source = Path(__file__).resolve().parents[1] / "data" / "sample_data.json"
+    data = json.loads(source.read_text(encoding="utf-8"))
+    data["events"][0]["description"] = ""
+    path = tmp_path / "default.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with override_settings(JSON_DATA_FILE=path):
+        response = client.get("/events/1/")
+        text = response.content.decode()
+        assert "15.10.2026" in text
+        assert "Описание пока не добавлено" in text
+        assert '/organizations/1/' in text
+        assert "Красный Крест" in text
+
+
+def test_corrupt_json_is_not_disguised_as_empty_list(tmp_path):
+    path = tmp_path / "broken.json"
+    path.write_text("{broken", encoding="utf-8")
+    with override_settings(JSON_DATA_FILE=path):
+        with pytest.raises(json.JSONDecodeError):
+            load_catalog()

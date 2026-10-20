@@ -1,0 +1,8 @@
+<article class="card entity-card">
+  <div class="card-body">
+    <h2 class="h4">Регистрация №{{ item.id|default:"Без названия" }}</h2>
+    <p class="card-meta">{{ item.registration_date|date:"d.m.Y" }}</p>
+    {% include "includes/status.html" with status=item.status only %}
+    <a class="btn btn-outline-danger mt-3" href="{% url 'registrations:detail' item.id %}">Подробнее<span class="visually-hidden">: Регистрация №{{ item.id }}</span></a>
+  </div>
+</article>

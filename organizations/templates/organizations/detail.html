@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}{{ item.name }}{% else %}Объект не найден{% endif %} — Донорские мероприятия{% endblock %}
+{% block content %}
+  {% if item %}
+    <p class="eyebrow">Организация · №{{ item.id }}</p>
+    <h1>{{ item.name|default:"Без названия" }}</h1>
+    <article class="card detail-card"><div class="card-body">
+      <dl class="details">
+        <div><dt>Город</dt><dd>{{ item.city }}</dd></div>
+        <div><dt>Адрес</dt><dd>{{ item.address }}</dd></div>
+        <div><dt>Телефон</dt><dd>{{ item.phone }}</dd></div>
+        <div><dt>Email</dt><dd>{{ item.email|default:"Не указан" }}</dd></div>
+      </dl>
+
+      <h2 class="h4 mt-4">Мероприятия организации</h2>
+      <ul>{% for event in events %}
+        <li><a href="{% url 'events:detail' event.id %}">{{ event.title }}</a></li>
+      {% empty %}<li>Мероприятий пока нет.</li>{% endfor %}</ul>
+    </div></article>
+  {% else %}
+    <div class="empty-state"><p class="eyebrow">Ошибка 404</p><h1>Объект не найден</h1><p>Запись с таким идентификатором отсутствует.</p></div>
+  {% endif %}
+  <a class="btn btn-outline-secondary mt-4" href="{% url 'organizations:list' %}">← К списку</a>
+{% endblock %}

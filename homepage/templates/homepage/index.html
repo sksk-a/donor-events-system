@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Главная — Донорские мероприятия{% endblock %}
+{% block content %}
+  <section class="hero">
+    <p class="eyebrow">Сервис организации донорских акций</p>
+    <h1>Объединяем людей.<br><span>Помогаем спасать жизни.</span></h1>
+    <p class="hero-description">Мероприятия, организаторы и участники — всё, что нужно для координации донорских акций, в одном месте.</p>
+    <a class="btn btn-danger btn-lg" href="{% url 'events:list' %}">Посмотреть мероприятия →</a>
+  </section>
+  <section class="stats-grid" aria-label="Сведения о сервисе">
+    <a class="stat-card" href="{% url 'events:list' %}"><strong>{{ events|length }}</strong><span>Мероприятия</span></a>
+    <a class="stat-card" href="{% url 'organizations:list' %}"><strong>{{ organizations|length }}</strong><span>Организации</span></a>
+    <a class="stat-card" href="{% url 'participants:list' %}"><strong>{{ participants|length }}</strong><span>Участники</span></a>
+    <a class="stat-card" href="{% url 'registrations:list' %}"><strong>{{ registrations|length }}</strong><span>Регистрации</span></a>
+  </section>
+  <section class="mt-5" aria-labelledby="events-heading">
+    <div class="section-heading"><h2 id="events-heading">Мероприятия сервиса</h2><a href="{% url 'events:list' %}">Все мероприятия →</a></div>
+    <div class="entity-grid">
+      {% for event in events %}
+        {% include "events/includes/card.html" with item=event only %}
+      {% empty %}
+        <p class="empty-state">Пока нет данных. Мероприятия ещё не добавлены.</p>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

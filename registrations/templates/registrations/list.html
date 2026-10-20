@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Регистрации — Донорские мероприятия{% endblock %}
+{% block content %}
+  <header class="page-heading">
+    <p class="eyebrow">Сервис донорских мероприятий</p>
+    <h1>Регистрации</h1>
+    <p class="text-secondary">Всего: {{ items|length }}</p>
+  </header>
+  <div class="entity-grid">
+    {% for item in items %}
+      {% include "registrations/includes/card.html" with item=item only %}
+    {% empty %}
+      <div class="empty-state"><h2 class="h4">Пока нет данных.</h2><p>В этом разделе ещё нет записей.</p></div>
+    {% endfor %}
+  </div>
+{% endblock %}
