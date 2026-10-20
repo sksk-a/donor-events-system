@@ -20,5 +20,5 @@ class ExcelExporter:
                 ws.append([(v.value if isinstance(v,Enum) else v) for v in (getattr(item,h) for h in headers)])
             ws.freeze_panes="A2";ws.auto_filter.ref=ws.dimensions
             for column in ws.columns:
-                ws.column_dimensions[column[0].column_letter].width=min(max(len(str(c.value or "")) for c in column)+2,45)
+                ws.column_dimensions[column[0].column_letter].width=min(max(len(str(c.value or "")) for c in column) + 2,45)
         wb.save(target);return target.resolve()

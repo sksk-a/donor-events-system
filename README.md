@@ -1,7 +1,7 @@
 # Сервис организации донорских мероприятий
 
 ## Назначение
-Консольная информационная система для управления донорскими мероприятиями. Система позволяет организациям регистрировать и проводить донорские акции, участникам записываться на мероприятия, а администраторам отслеживать статистику и экспортировать данные.
+Информационная система с консольным и веб-интерфейсом для управления донорскими мероприятиями. Система позволяет организациям регистрировать и проводить донорские акции, участникам записываться на мероприятия, а администраторам отслеживать статистику и экспортировать данные.
 
 ## Целевая аудитория
 - Организации здравоохранения и волонтерские движения
@@ -148,7 +148,7 @@ organizations = data['organizations']
 ## План развития
 
 На следующих этапах планируется:
-- Разработка веб-приложения с современным интерфейсом
+- Расширение веб-интерфейса формами создания и редактирования
 - Реализация системы аутентификации и авторизации пользователей
 - Разработка REST API для интеграции с внешними системами
 - Контейнеризация приложения (Docker)
@@ -166,3 +166,55 @@ organizations = data['organizations']
 - `ModuleNotFoundError`: активируйте `.venv` и выполните установку зависимостей.
 
 ER-модель: [docs/er-diagram.md](docs/er-diagram.md).
+
+
+## Веб-версия: ПР5
+
+Django 5.2 добавлен к существующему проекту. PostgreSQL нужен только консольной версии.
+Веб-версия читает `data/sample_data.json` существующим `JsonHandler`; адаптер
+`app/utils/web_data.py` создаёт прежние dataclass `Event`, `Organization`, `Participant`,
+`Registration`, преобразуя даты и Enum. Исходные записи не изменены.
+В исходном JSON нет ключа registrations: список регистраций пока пуст, данные не выдумываются.
+Страницы предназначены для просмотра; ORM, миграции и формы не используются.
+
+### Запуск из корня репозитория (PowerShell)
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python manage.py check
+python manage.py runserver
+```
+
+Откройте http://127.0.0.1:8000/. Без активации используйте `.venv\Scripts\python` вместо `python`.
+
+| URL | Приложение / функция | Назначение |
+| --- | --- | --- |
+| `/` | homepage.views.index | Главная и навигация |
+| `/events/`, `/events/<int:entity_id>/` | events.views.list_view / detail | Мероприятия |
+| `/organizations/`, `/organizations/<int:entity_id>/` | organizations.views.list_view / detail | Организации |
+| `/participants/`, `/participants/<int:entity_id>/` | participants.views.list_view / detail | Доноры |
+| `/registrations/`, `/registrations/<int:entity_id>/` | registrations.views.list_view / detail | Регистрации |
+
+`donor_site/` содержит settings, корневой urls, wsgi/asgi; `manage.py` запускает команды Django.
+Каждое веб-приложение зарегистрировано в INSTALLED_APPS и имеет свой urls.py и views.py.
+Донор Participant — предметная сущность, а не учётная запись Django User.
+В ПР5 общий HTML собирает `homepage.views.page()`, подключающий Bootstrap 5.3.3 через CDN.
+Данные экранируются, отсутствующий объект возвращает 404.
+Собственный handler404 в корневом urls применяется при DEBUG=False.
+
+Для проверки собственной 404:
+
+```powershell
+$env:DJANGO_DEBUG = "0"
+python manage.py runserver
+# После остановки сервера Ctrl+C:
+Remove-Item Env:DJANGO_DEBUG
+```
+
+По умолчанию DEBUG=True для локальной разработки. ALLOWED_HOSTS ограничен localhost и 127.0.0.1.
+Ключ по умолчанию предназначен только для локального учебного запуска.
+
+Проверки: `python manage.py check`, `python -m pytest -v`, `python -m flake8 . --extend-exclude=venv`.
+Консольные CRUD, Excel, SQL-репозитории и все прежние классы сохранены; их описание приведено выше.

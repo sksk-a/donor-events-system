@@ -1,4 +1,3 @@
-from pathlib import Path
 from app.utils.json_handler import JsonHandler
 
 
