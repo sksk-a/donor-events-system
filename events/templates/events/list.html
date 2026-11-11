@@ -5,6 +5,11 @@
     <p class="eyebrow">Сервис донорских мероприятий</p>
     <h1>Мероприятия</h1>
     <p class="text-secondary">Всего: {{ items|length }}</p>
+    <p><a href="{% url 'events:available' %}">Найти мероприятие со свободными местами</a></p>
+    <form method="get" action="{% url 'events:list' %}">
+      {{ filter_form.as_p }}
+      <button class="btn btn-outline-danger" type="submit">Отобрать</button>
+    </form>
   </header>
   <div class="entity-grid">
     {% for item in items %}

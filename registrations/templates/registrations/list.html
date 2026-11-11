@@ -3,8 +3,11 @@
 {% block content %}
   <header class="page-heading">
     <p class="eyebrow">Сервис донорских мероприятий</p>
-    <h1>Регистрации</h1>
+    <h1>{% if active_only %}Активные регистрации{% else %}Регистрации{% endif %}</h1>
     <p class="text-secondary">Всего: {{ items|length }}</p>
+    <p><a href="{% url 'registrations:list' %}">Все регистрации</a> ·
+       <a href="{% url 'registrations:active' %}">Активные регистрации</a> ·
+       <a href="{% url 'registrations:statistics' %}">Статистика</a></p>
   </header>
   <div class="entity-grid">
     {% for item in items %}

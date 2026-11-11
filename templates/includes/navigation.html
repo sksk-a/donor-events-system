@@ -11,6 +11,8 @@
       <a href="{% url 'organizations:list' %}" {% if request.resolver_match.namespace == 'organizations' %}aria-current="page"{% endif %}>Организации</a>
       <a href="{% url 'participants:list' %}" {% if request.resolver_match.namespace == 'participants' %}aria-current="page"{% endif %}>Участники</a>
       <a href="{% url 'registrations:list' %}" {% if request.resolver_match.namespace == 'registrations' %}aria-current="page"{% endif %}>Регистрации</a>
+      <a href="{% url 'events:available' %}">Свободные места</a>
+      <a href="{% url 'registrations:statistics' %}">Статистика</a>
     </nav>
   </div>
 </header>

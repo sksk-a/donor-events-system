@@ -1,5 +1,112 @@
 # Сервис организации донорских мероприятий
 
+## Текущий этап ПР7 — SQLite и SQL
+
+Веб-сайт получает предметные данные из `data/donor_events.sqlite` через стандартный
+модуль `sqlite3`. Django ORM для организаций, мероприятий, участников и регистраций
+не используется. Старый JSON-адаптер сохранён в `app/utils/web_data.py`, исходный
+`data/sample_data.json` не изменён. Консольная версия продолжает работать с PostgreSQL.
+
+### Запуск сайта в PowerShell
+
+Команды выполняются из папки проекта:
+
+```powershell
+cd "C:\Users\Redmi\Desktop\3 курс универ\ТРПНБФ ИП\donor-events-system"
+# Только при отсутствии окружения:
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+# База уже приложена к проекту. Импорт нужен при её отсутствии или для восстановления:
+.\.venv\Scripts\python.exe -m db.import_json
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py check
+.\.venv\Scripts\python.exe manage.py runserver
+```
+
+Открыть `http://127.0.0.1:8000/`. Остановка сервера — Ctrl+C. При следующих запусках
+достаточно команды `manage.py runserver` через Python из `.venv`.
+**Импорт заменяет предметные данные содержимым JSON**, поэтому перед повторным
+импортом изменённой вручную БД следует сохранить её копию. Ошибка импорта откатывает
+удаления и вставки одной транзакции; корректный повторный импорт не создаёт дубликатов.
+
+### Структура хранения и файлы
+
+| Файл | Назначение |
+| --- | --- |
+| `sql/schema.sql` | Создание таблиц, внешних ключей, CHECK, UNIQUE и индексов; повторное выполнение безопасно |
+| `sql/queries.sql` | 20 именованных запросов; именно этот файл исполняется сайтом |
+| `db/database.py` | `sqlite3.connect`, `PRAGMA foreign_keys = ON`, `sqlite3.Row`, закрытие соединений |
+| `db/import_json.py` | Транзакционный импорт через `executemany()` и явный `commit()` |
+| `db/catalog.py` | Преобразование результатов SQL в прежние dataclass, даты и Enum для шаблонов |
+| `data/donor_events.sqlite` | Предметные данные сайта ПР7 |
+| `db.sqlite3` | Отдельные служебные таблицы Django auth/contenttypes/sessions |
+
+Поля таблиц (полный DDL в `sql/schema.sql`):
+
+| Таблица | Поля |
+| --- | --- |
+| `organizations` | `id INTEGER PK`, `name TEXT`, `city TEXT`, `address TEXT`, `phone TEXT`, `email TEXT NULL` |
+| `participants` | `id INTEGER PK`, `full_name TEXT`, `birth_date TEXT`, `phone TEXT`, `email TEXT NULL`, `blood_type TEXT`, `active INTEGER` |
+| `events` | `id INTEGER PK`, `organization_id INTEGER FK`, `title TEXT`, `event_date TEXT`, `city TEXT`, `address TEXT`, `max_participants INTEGER`, `status TEXT`, `description TEXT NULL` |
+| `registrations` | `id INTEGER PK`, `participant_id INTEGER FK`, `event_id INTEGER FK`, `registration_date TEXT`, `status TEXT`, `notes TEXT NULL` |
+
+Остальные поля обязательны. Даты хранятся в ISO-формате `YYYY-MM-DD`, логический
+`active` — как `0`/`1`. Связи: организация → мероприятия, участник → регистрации,
+мероприятие → регистрации. `UNIQUE(participant_id, event_id)` запрещает повторную запись.
+Проверки `CHECK` ограничивают статусы, группы крови и положительную вместимость.
+
+Импортированы все исходные записи: 2 организации, 2 участника, 1 мероприятие,
+0 регистраций. Пустой список регистраций соответствует JSON, а не ошибке импорта.
+Для проверки непустых выборок тесты создают отдельные временные базы с регистрациями.
+
+### Запросы и страницы
+
+| Запросы в `sql/queries.sql` | Где виден результат |
+| --- | --- |
+| 1–4: списки `events_list`, `organizations_list`, `participants_list`, `registrations_list` | Главная `/` и разделы сущностей |
+| 5: `events_capacity`, WHERE с параметром | `/events/?capacity=30` |
+| 6: `active_registrations`, WHERE и JOIN | `/registrations/active/` |
+| 7: `events_organizations`, JOIN | `/organizations/events/` |
+| 8: `registrations_related`, JOIN четырёх таблиц | `/registrations/` |
+| 9: `available_events`, дата, город, LEFT JOIN, HAVING | `/events/available/` |
+| 10–11: `registration_totals`, `event_totals`, COUNT/SUM/AVG/MIN/MAX | `/registrations/statistics/` |
+| 12–13: `registrations_by_event`, `events_by_organization`, GROUP BY | `/registrations/statistics/` |
+| 14: `popular_events`, GROUP BY и HAVING с порогом | `/registrations/statistics/?threshold=0` |
+| 15–20: карточки, мероприятия организации, занятые места | Страницы сущностей `/<раздел>/<id>/` |
+
+Таким образом, используются не менее двух списковых запросов, двух WHERE, двух JOIN,
+двух агрегатных запросов и двух GROUP BY. Все 20 запросов вызываются веб-приложением.
+Пользовательские значения проходят валидацию Django Forms и передаются отдельным
+кортежем к `execute(sql, params)` через `?`. SQL не показывается в интерфейсе сайта.
+
+Поиск доступных мероприятий: выбираются акции `PLANNED`/`OPEN` **на введённую дату**,
+при необходимости в выбранном городе. Число мест — вместимость минус неотменённые
+регистрации. Отменённые записи не занимают места, завершённые/отменённые акции и полные
+мероприятия не попадают в результат. Активные регистрации — `REGISTERED`/`CONFIRMED`
+на мероприятиях `PLANNED`/`OPEN`. Прошедшая дата сама по себе не меняет статус.
+Для исходного примера можно искать **15.10.2026**, город **Москва**, 1 свободное место.
+
+`DONOR_SQLITE_FILE` позволяет выбрать другую БД (относительный путь считается от корня
+проекта). Например: `$env:DONOR_SQLITE_FILE = "data/demo.sqlite"`.
+Веб-настройки читают переменные окружения; файл `.env` предназначен для старой консольной
+версии. Сайт не создаёт пустую БД при неверном пути и не выполняет импорт автоматически.
+
+### Проверки и защита
+
+```powershell
+.\.venv\Scripts\python.exe -B manage.py check
+.\.venv\Scripts\python.exe -B -m pytest -v
+.\.venv\Scripts\python.exe -B -m flake8 . --extend-exclude=venv
+.\.venv\Scripts\python.exe -B -m tools.check_sql
+```
+
+`tools.check_sql` выполняет все запросы через SQLite CLI стандартной библиотеки Python
+(`python -m sqlite3`, Python 3.12+). Сам сайт требует Python 3.11+.
+Тесты используют временные БД и не меняют рабочую `data/donor_events.sqlite`.
+Сценарий защиты и соответствие 25 пунктам: `docs/PR7_DEFENSE.md`.
+Материалы Яндекс Практикума проходят отдельно в учебном аккаунте; репозиторий
+не подтверждает их прохождение.
+
 ## Назначение
 Информационная система с консольным и веб-интерфейсом для управления донорскими мероприятиями. Система позволяет организациям регистрировать и проводить донорские акции, участникам записываться на мероприятия, а администраторам отслеживать статистику и экспортировать данные.
 
@@ -94,7 +201,7 @@ Python-сортировка по четырем полям, 11 статисти�
 
 ## Тестирование и качество кода
 
-Исходный проект включает 49 автоматических тестов; после ПР6 всего 74 проверки (25 новых HTTP/JSON проверок) с использованием pytest:
+Исходный проект включал 49 тестов, после ПР6 было 74; после ПР7 — 89 проверок с использованием pytest:
 
 ```powershell
 # Запуск всех тестов
@@ -168,7 +275,10 @@ organizations = data['organizations']
 ER-модель: [docs/er-diagram.md](docs/er-diagram.md).
 
 
-## Веб-версия: ПР5 и ПР6
+## История веб-версии ПР5 и ПР6
+
+Ниже сохранено описание предыдущего этапа с JSON-хранилищем. Для текущего запуска,
+источника данных и демонстрации используйте раздел ПР7 в начале README.
 
 Django 5.2 добавлен к существующему проекту. PostgreSQL нужен только консольной версии.
 Веб-версия читает `data/sample_data.json` существующим `JsonHandler`; адаптер

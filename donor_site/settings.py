@@ -1,4 +1,4 @@
-"""Локальная учебная конфигурация. Веб-данные читаются только из JSON."""
+"""Веб-данные ПР7: отдельная SQLite-база через sqlite3, без предметных ORM-моделей."""
 import os
 from pathlib import Path
 
@@ -36,7 +36,7 @@ TEMPLATES = [{
 }]
 WSGI_APPLICATION = "donor_site.wsgi.application"
 ASGI_APPLICATION = "donor_site.asgi.application"
-# SQLite содержит только служебные таблицы Django. Предметные данные — JSON.
+# Здесь только служебные таблицы Django. Предметная БД указана отдельно ниже.
 DATABASES = {"default": {
     "ENGINE": "django.db.backends.sqlite3",
     "NAME": BASE_DIR / "db.sqlite3",
@@ -52,3 +52,8 @@ JSON_DATA_FILE = Path(os.environ.get(
 ))
 if not JSON_DATA_FILE.is_absolute():
     JSON_DATA_FILE = BASE_DIR / JSON_DATA_FILE
+DONOR_SQLITE_FILE = Path(os.environ.get(
+    "DONOR_SQLITE_FILE", str(BASE_DIR / "data" / "donor_events.sqlite"),
+))
+if not DONOR_SQLITE_FILE.is_absolute():
+    DONOR_SQLITE_FILE = BASE_DIR / DONOR_SQLITE_FILE

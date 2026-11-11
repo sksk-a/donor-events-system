@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Свободные места — Донорские мероприятия{% endblock %}
+{% block content %}
+  <header class="page-heading"><h1>Найти мероприятие</h1>
+    <p>Выберите дату, город и необходимое число свободных мест.</p>
+  </header>
+  <form method="get" action="{% url 'events:available' %}" class="card card-body mb-4">
+    {{ form.as_p }}
+    <button class="btn btn-danger" type="submit">Найти свободные места</button>
+  </form>
+  {% if searched %}
+    <div class="entity-grid">
+      {% for item in items %}
+        <article class="card card-body">
+          <h2 class="h4"><a href="{% url 'events:detail' item.id %}">{{ item.title }}</a></h2>
+          <p>{{ item.event_date|date:"d.m.Y" }} · {{ item.city }}</p>
+          <p>Организатор: {{ item.organization_name }}</p>
+          <p><strong>Свободных мест: {{ item.free_places }}</strong></p>
+        </article>
+      {% empty %}<p class="empty-state">По выбранным условиям мероприятий со свободными местами нет.</p>{% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

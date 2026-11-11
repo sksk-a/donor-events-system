@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Статистика — Донорские мероприятия{% endblock %}
+{% block content %}
+  <header class="page-heading"><h1>Статистика донорских мероприятий</h1></header>
+  <section class="card card-body mb-4">
+    <h2 class="h4">Общие показатели</h2>
+    <p>Регистраций: {{ registration_totals.total }}. Занятых мест: {{ registration_totals.occupied }}.</p>
+    <p>Мероприятий: {{ event_totals.total }}. Общая вместимость: {{ event_totals.capacity }}.</p>
+    <p>Средняя вместимость: {{ event_totals.average_capacity|floatformat:1 }}.
+       Минимальная: {{ event_totals.min_capacity }}. Максимальная: {{ event_totals.max_capacity }}.</p>
+  </section>
+  <section class="card card-body mb-4">
+    <h2 class="h4">Регистрации по мероприятиям</h2>
+    <table class="table"><thead><tr><th scope="col">Мероприятие</th><th scope="col">Всего</th><th scope="col">Занято мест</th></tr></thead>
+      <tbody>{% for item in by_event %}<tr>
+        <td><a href="{% url 'events:detail' item.id %}">{{ item.title }}</a></td><td>{{ item.total }}</td><td>{{ item.occupied }}</td>
+      </tr>{% empty %}<tr><td colspan="3">Пока нет данных.</td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+  <section class="card card-body mb-4">
+    <h2 class="h4">Мероприятия по организациям</h2>
+    <ul>{% for item in by_organization %}
+      <li><a href="{% url 'organizations:detail' item.id %}">{{ item.name }}</a>: {{ item.total }}</li>
+    {% empty %}<li>Пока нет данных.</li>{% endfor %}</ul>
+  </section>
+  <section class="card card-body">
+    <h2 class="h4">Мероприятия по числу регистраций</h2>
+    <form method="get" action="{% url 'registrations:statistics' %}">
+      {{ form.as_p }}<button class="btn btn-outline-danger" type="submit">Показать</button>
+    </form>
+    <ul>{% for item in popular %}
+      <li><a href="{% url 'events:detail' item.id %}">{{ item.title }}</a>: {{ item.total }}</li>
+    {% empty %}<li>Подходящих мероприятий нет.</li>{% endfor %}</ul>
+  </section>
+{% endblock %}

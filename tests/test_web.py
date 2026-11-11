@@ -1,12 +1,13 @@
-"""HTTP и JSON проверяются без PostgreSQL и без pytest-django."""
+"""Регрессии ПР6 после переноса веб-страниц на SQLite; JSON-адаптер сохранён."""
 import json
 import os
 from datetime import date
 from pathlib import Path
+from contextlib import contextmanager
 
 import django
 import pytest
-from django.test import Client, override_settings
+from django.test import override_settings
 from django.urls import reverse
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "donor_site.settings")
@@ -14,12 +15,15 @@ django.setup()
 
 from app.models import Event, EventStatus  # noqa: E402
 from app.utils.web_data import load_catalog  # noqa: E402
+from db.import_json import import_data  # noqa: E402
 
 
-@pytest.fixture
-def client():
-    with override_settings(ALLOWED_HOSTS=["testserver"], DEBUG=False):
-        yield Client()
+@contextmanager
+def sql_catalog(path, tmp_path):
+    target = tmp_path / "custom.sqlite"
+    import_data(path, target)
+    with override_settings(JSON_DATA_FILE=path, DONOR_SQLITE_FILE=target):
+        yield
 
 
 @pytest.mark.parametrize("path", [
@@ -60,7 +64,7 @@ def test_catalog_uses_existing_models_and_dates():
 def test_empty_catalog(client, tmp_path):
     path = tmp_path / "empty.json"
     path.write_text("{}", encoding="utf-8")
-    with override_settings(JSON_DATA_FILE=path):
+    with sql_catalog(path, tmp_path):
         for section in ("events", "organizations", "participants", "registrations"):
             response = client.get(f"/{section}/")
             assert response.status_code == 200
@@ -79,7 +83,7 @@ def test_registration_links_and_cancelled_capacity(client, tmp_path):
     ]
     path = tmp_path / "registrations.json"
     path.write_text(json.dumps(data), encoding="utf-8")
-    with override_settings(JSON_DATA_FILE=path):
+    with sql_catalog(path, tmp_path):
         catalog = load_catalog()
         assert catalog.free_places(catalog.events[0]) == 49
         for entity_id in (1, 2):
@@ -100,7 +104,7 @@ def test_json_text_is_escaped(client, tmp_path):
     data["events"][0]["title"] = '<script>alert("x")</script>'
     path = tmp_path / "escaped.json"
     path.write_text(json.dumps(data), encoding="utf-8")
-    with override_settings(JSON_DATA_FILE=path):
+    with sql_catalog(path, tmp_path):
         for url in ("/events/", "/events/1/"):
             text = client.get(url).content.decode()
             assert '<script>alert(' not in text
@@ -113,7 +117,7 @@ def test_template_date_default_and_related_organization(client, tmp_path):
     data["events"][0]["description"] = ""
     path = tmp_path / "default.json"
     path.write_text(json.dumps(data), encoding="utf-8")
-    with override_settings(JSON_DATA_FILE=path):
+    with sql_catalog(path, tmp_path):
         response = client.get("/events/1/")
         text = response.content.decode()
         assert "15.10.2026" in text

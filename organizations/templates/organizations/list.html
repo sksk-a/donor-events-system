@@ -5,6 +5,7 @@
     <p class="eyebrow">Сервис донорских мероприятий</p>
     <h1>Организации</h1>
     <p class="text-secondary">Всего: {{ items|length }}</p>
+    <p><a href="{% url 'organizations:event-directory' %}">Мероприятия и организаторы</a></p>
   </header>
   <div class="entity-grid">
     {% for item in items %}

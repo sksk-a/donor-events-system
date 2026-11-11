@@ -1,15 +1,15 @@
 from django.shortcuts import render
 
-from app.utils.web_data import load_catalog
+from app.models import Event, Organization, Participant, Registration
+from db.catalog import list_models
 
 
 def index(request):
-    catalog = load_catalog()
     context = {
-        "events": catalog.events,
-        "organizations": catalog.organizations,
-        "participants": catalog.participants,
-        "registrations": catalog.registrations,
+        "events": list_models("events_list", Event),
+        "organizations": list_models("organizations_list", Organization),
+        "participants": list_models("participants_list", Participant),
+        "registrations": list_models("registrations_list", Registration),
     }
     return render(request, "homepage/index.html", context)
 
