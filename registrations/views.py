@@ -1,59 +1,76 @@
-from django.shortcuts import render
+from django.core.paginator import Paginator
+from django.db.models import Avg, Count, Max, Min, Q, Sum
+from django.shortcuts import get_object_or_404, render
 
-from app.models import Event, Participant, Registration
-from db.catalog import get_model
-from db.database import fetch_all, fetch_one
-from .forms import StatisticsForm
+from events.models import Event
+from organizations.models import Organization
+from .forms import RegistrationFilterForm, SORT_FIELDS, StatisticsForm
+from .models import Registration
+
+
+def _list(request, active_only=False):
+    params = request.GET.copy()
+    if params.get("sort") not in SORT_FIELDS:
+        params["sort"] = "date"
+    form = RegistrationFilterForm(params)
+    items = Registration.objects.select_related("participant", "event__organization")
+    if active_only:
+        items = items.exclude(status__in=[Registration.Status.CANCELLED, Registration.Status.ATTENDED]).filter(
+            event__status__in=[Event.Status.PLANNED, Event.Status.OPEN],
+        )
+    if form.is_valid():
+        values = form.cleaned_data
+        if values["date"]:
+            items = items.filter(registration_date=values["date"])
+        if values["event"]:
+            items = items.filter(event=values["event"])
+        if values["participant"]:
+            items = items.filter(participant=values["participant"])
+        if values["city"]:
+            items = items.filter(event__city=values["city"])
+        if values["q"]:
+            items = items.filter(Q(participant__full_name__icontains=values["q"]) | Q(event__title__icontains=values["q"]))
+        items = items.order_by(*SORT_FIELDS[values["sort"] or "date"])
+    else:
+        items = items.none().order_by("id")
+    page_obj = Paginator(items, 5).get_page(request.GET.get("page"))
+    return render(request, "registrations/list.html", {
+        "items": page_obj, "page_obj": page_obj, "filter_form": form, "active_only": active_only,
+    })
 
 
 def list_view(request):
-    rows = fetch_all("registrations_related")
-    context = {"items": [_display_row(row) for row in rows]}
-    return render(request, "registrations/list.html", context)
-
-
-def detail(request, entity_id):
-    item = get_model("registration_detail", Registration, entity_id)
-    context = {"item": item}
-
-    context["event"] = (
-        get_model("event_detail", Event, item.event_id) if item else None
-    )
-    context["participant"] = (
-        get_model("participant_detail", Participant, item.participant_id) if item else None
-    )
-
-    return render(
-        request, "registrations/detail.html", context,
-        status=404 if item is None else 200,
-    )
-
-
-def _display_row(row):
-    from datetime import date
-    from app.models import RegistrationStatus
-
-    return dict(row, registration_date=date.fromisoformat(row["registration_date"]),
-                status=RegistrationStatus(row["status"]))
+    return _list(request)
 
 
 def active(request):
-    return render(request, "registrations/list.html", {
-        "items": [_display_row(row) for row in fetch_all("active_registrations")],
-        "active_only": True,
-    })
+    return _list(request, active_only=True)
+
+
+def detail(request, entity_id):
+    item = get_object_or_404(Registration.objects.select_related("event", "participant"), pk=entity_id)
+    return render(request, "registrations/detail.html", {"item": item, "event": item.event, "participant": item.participant})
 
 
 def statistics(request):
     form = StatisticsForm(request.GET)
     valid = form.is_valid()
-    threshold = form.cleaned_data.get("threshold") if valid else None
-    threshold = 0 if threshold is None else threshold
+    threshold = (form.cleaned_data["threshold"] or 0) if valid else 0
     return render(request, "registrations/statistics.html", {
         "form": form,
-        "registration_totals": fetch_one("registration_totals"),
-        "event_totals": fetch_one("event_totals"),
-        "by_event": fetch_all("registrations_by_event"),
-        "by_organization": fetch_all("events_by_organization"),
-        "popular": fetch_all("popular_events", (threshold,)) if valid else [],
+        "registration_totals": Registration.objects.aggregate(
+            total=Count("id"), occupied=Count("id", filter=~Q(status="CANCELLED")),
+        ),
+        "event_totals": Event.objects.aggregate(
+            total=Count("id"), capacity=Sum("max_participants", default=0),
+            average_capacity=Avg("max_participants", default=0),
+            min_capacity=Min("max_participants", default=0), max_capacity=Max("max_participants", default=0),
+        ),
+        "by_event": Event.objects.annotate(
+            total=Count("registrations"), occupied=Count("registrations", filter=~Q(registrations__status="CANCELLED")),
+        ).order_by("-total", "id"),
+        "by_organization": Organization.objects.annotate(total=Count("events")).order_by("-total", "id"),
+        "popular": Event.objects.annotate(total=Count("registrations", filter=~Q(registrations__status="CANCELLED"))).filter(
+            total__gt=threshold,
+        ).order_by("-total", "id") if valid else Event.objects.none(),
     })

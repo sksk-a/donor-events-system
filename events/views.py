@@ -1,50 +1,42 @@
-from datetime import date
+from django.shortcuts import get_object_or_404, render
 
-from django.shortcuts import render
-
-from app.models import Event, Organization
-from db.catalog import free_places, get_model, list_models
-from db.database import fetch_all
 from .forms import AvailableEventsForm, CapacityForm
+from .models import Event
+from .querysets import with_free_places
 
 
 def list_view(request):
     form = CapacityForm(request.GET)
-    valid = form.is_valid()
-    capacity = form.cleaned_data.get("capacity") if valid else None
-    items = (list_models("events_capacity", Event, (capacity,)) if capacity is not None
-             else list_models("events_list", Event))
-    context = {"items": items, "filter_form": form}
-    return render(request, "events/list.html", context)
+    items = Event.objects.all().order_by("event_date", "id")
+    if form.is_valid():
+        values = form.cleaned_data
+        if values["capacity"] is not None:
+            items = items.filter(max_participants__gte=values["capacity"])
+        if values["q"]:
+            items = items.filter(title__icontains=values["q"])
+    else:
+        items = items.none()
+    return render(request, "events/list.html", {"items": items, "filter_form": form})
 
 
 def detail(request, entity_id):
-    item = get_model("event_detail", Event, entity_id)
-    context = {"item": item}
-
-    context["organization"] = (
-        get_model("organization_detail", Organization, item.organization_id) if item else None
-    )
-    context["free_places"] = free_places(item) if item else 0
-
-    return render(
-        request, "events/detail.html", context,
-        status=404 if item is None else 200,
-    )
+    item = get_object_or_404(with_free_places(), pk=entity_id)
+    return render(request, "events/detail.html", {
+        "item": item, "organization": item.organization, "free_places": max(0, item.free_places),
+    })
 
 
 def available(request):
     form = AvailableEventsForm(request.GET or None)
-    items = []
+    items = Event.objects.none()
     searched = form.is_bound and form.is_valid()
     if searched:
         values = form.cleaned_data
-        city = values["city"]
-        rows = fetch_all("available_events", (
-            values["date"].isoformat(), city, city, values["places"],
-        ))
-        # sqlite3.Row: шаблон обращается к полям по именам.
-        items = [dict(row, event_date=date.fromisoformat(row["event_date"])) for row in rows]
-    return render(request, "events/available.html", {
-        "form": form, "items": items, "searched": searched,
-    })
+        items = with_free_places().filter(
+            event_date=values["date"], status__in=[Event.Status.PLANNED, Event.Status.OPEN],
+            free_places__gte=values["places"],
+        )
+        if values["city"]:
+            items = items.filter(city=values["city"])
+        items = items.order_by("-free_places", "id")
+    return render(request, "events/available.html", {"form": form, "items": items, "searched": searched})

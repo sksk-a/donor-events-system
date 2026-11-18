@@ -10,6 +10,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "donor_site.settings")
 django.setup()
 
 from db.import_json import import_data  # noqa: E402
+from db.import_sqlite_to_orm import transfer  # noqa: E402
 
 SOURCE = Path(__file__).resolve().parents[1] / "data" / "sample_data.json"
 
@@ -23,6 +24,12 @@ def sql_database(tmp_path):
 
 
 @pytest.fixture
-def client(sql_database):
+def orm_database(sql_database, db):
+    transfer(sql_database)
+    return sql_database
+
+
+@pytest.fixture
+def client(orm_database):
     with override_settings(ALLOWED_HOSTS=["testserver"], DEBUG=False):
         yield Client()

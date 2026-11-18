@@ -3,6 +3,7 @@ from django import forms
 
 class CapacityForm(forms.Form):
     capacity = forms.IntegerField(label="Вместимость от", min_value=1, max_value=1000000, required=False)
+    q = forms.CharField(label="Название содержит", max_length=200, required=False)
 
 
 class AvailableEventsForm(forms.Form):

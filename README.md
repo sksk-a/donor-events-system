@@ -1,6 +1,101 @@
 # Сервис организации донорских мероприятий
 
-## Текущий этап ПР7 — SQLite и SQL
+## Текущий этап ПР9 — модели и Django ORM
+
+Веб-сайт работает через Django ORM и миграции в `db.sqlite3`. Предметные модели
+расположены в `organizations/models.py`, `participants/models.py`, `events/models.py`
+и `registrations/models.py`. Исходные JSON, SQL-слой и база ПР7 сохранены как история.
+Консольная версия PostgreSQL и её dataclass-модели остаются отдельной реализацией.
+
+### Запуск ПР9 из папки проекта
+
+```powershell
+cd "C:\Users\Redmi\Desktop\3 курс универ\ТРПНБФ ИП\donor-events-system"
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py import_pr7
+.\.venv\Scripts\python.exe manage.py check
+.\.venv\Scripts\python.exe manage.py runserver
+```
+
+Если окружения ещё нет: `python -m venv .venv`. После первого переноса при обычном
+запуске достаточно `manage.py runserver`. Адрес `http://127.0.0.1:8000/`, остановка Ctrl+C.
+Данные ПР9 не читаются автоматически из JSON/старой базы при каждом запросе.
+Повторный `import_pr7` обновляет совпадающие ID, поэтому изменения этих записей в ORM
+могут быть заменены исходными значениями; остальные записи команды не удаляют.
+
+### Модели миграции и сохранность данных
+
+- `Organization` и `Participant` наследуют абстрактную `ContactInfo` (телефон и email).
+- `Event.organization` — ForeignKey; `Registration.event` и `.participant` — ForeignKey.
+  Все связи защищены `PROTECT`, обратные связи доступны через `related_name`.
+- `Event.participants` — ManyToMany через `Registration`; UNIQUE запрещает повторную
+  пару участник/мероприятие. CHECK проверяет допустимые статусы и положительную вместимость.
+- Даты описаны DateField, активность BooleanField, статусы TextChoices. Первичные ключи BigAutoField.
+- Миграции приложений хранятся в Git; `db.sqlite3` исключена через `.gitignore`.
+  Исходная `data/donor_events.sqlite` ПР7 по-прежнему приложена к репозиторию.
+- Перенос из исходной SQLite выполняет `db/import_sqlite_to_orm.py` через команду
+  `import_pr7`: чтение `mode=ro`, запись в `transaction.atomic()`, `update_or_create()`
+  с сохранением ID. Ошибки откатывают всю запись. Источник не изменяется.
+
+На чистой базе после переноса: 2 организации, 2 участника, 1 мероприятие и 0 регистраций.
+Fixture этих данных: `data/pr9_fixture.json`. В совместимую базу после `migrate` можно
+вместо переноса выполнить `manage.py loaddata data/pr9_fixture.json`. Для выгрузки:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py dumpdata organizations participants events registrations --indent 2 --output data/pr9_fixture.json
+```
+
+`DJANGO_DB_FILE` задаёт целевую базу Django (по умолчанию `db.sqlite3`),
+`DONOR_SQLITE_FILE` — только источник переноса ПР7. Для новой демонстрационной базы
+можно задать `$env:DJANGO_DB_FILE = "data/demo_orm.sqlite3"`, затем migrate и loaddata.
+Рабочая база и учётные записи при этом остаются отдельными.
+
+### Сценарии и ORM запросы
+
+Все прежние URL сохранены: списки/детали организаций, мероприятий, участников и
+регистраций, поиск свободных мест, активные регистрации, статистика, связанные данные.
+В представлениях отсутствуют обращения к `db.database`, `db.catalog`, sqlite3 или JSON.
+
+- `/events/?capacity=30&q=День`: WHERE по вместимости и поиск `title__icontains`.
+- `/events/available/`: дата, город и минимальное число свободных мест. `Count` с
+  исключением CANCELLED и выражение `F(max_participants)-F(occupied)` сохраняют правила ПР7.
+- `/registrations/` и `/registrations/active/`: фильтры даты регистрации, мероприятия,
+  участника и города; поиск `Q` по ФИО или названию мероприятия. Активные регистрации
+  исключают CANCELLED/ATTENDED и выбирают мероприятия PLANNED/OPEN.
+- Сортировка регистраций по дате, убыванию даты, названию мероприятия или ФИО.
+  Поля выбираются из `SORT_FIELDS`, дополнены ID для стабильного порядка.
+- Пагинация по 5 записей: Paginator.get_page; ссылки `{% querystring %}` сохраняют фильтры.
+  Некорректный page даёт первую страницу, слишком большой/отрицательный — последнюю.
+- `/registrations/statistics/`: aggregate (Count/Sum/Avg/Min/Max), annotate по связанным
+  сущностям, фильтрация аннотации как HAVING. LEFT JOIN сохраняет группы с нулём записей.
+- `select_related` загружает связи без N+1; детали получают модель через get_object_or_404.
+
+Реализовано более 20 различных ORM-выражений с покрытием всех минимумов методички
+(2 получения, 4 фильтра, 2 поиска, 2 сортировки, 2 работы со связями, 2 агрегата,
+пагинация). Перечень и сценарий защиты: `docs/PR9_DEFENSE.md`.
+
+### Проверки ПР9
+
+```powershell
+.\.venv\Scripts\python.exe -B manage.py check
+.\.venv\Scripts\python.exe -B manage.py makemigrations --check --dry-run
+.\.venv\Scripts\python.exe -B manage.py showmigrations
+.\.venv\Scripts\python.exe -B manage.py demo_orm
+.\.venv\Scripts\python.exe -B -m pytest -v
+.\.venv\Scripts\python.exe -B -m flake8 . --extend-exclude=venv
+```
+
+ПР9: 102 теста. `demo_orm` демонстрирует create/get/save/delete без сохранения изменений.
+pytest-django создаёт отдельную тестовую базу; рабочие данные тесты не меняют.
+Проверены перенос и rollback, CRUD, ограничения и PROTECT, fixture dump/load, поиск,
+связи, корректные 404, совместная фильтрация/сортировка/пагинация на 12 регистрациях.
+Материалы Яндекс Практикума выполняются и подтверждаются отдельно в учебном аккаунте.
+
+## История ПР7 — SQLite и SQL
+
+Следующий раздел описывает предыдущий слой sqlite3. Для текущего запуска используйте
+инструкции ПР9 выше; историческая команда импорта JSON не обновляет ORM автоматически.
 
 Веб-сайт получает предметные данные из `data/donor_events.sqlite` через стандартный
 модуль `sqlite3`. Django ORM для организаций, мероприятий, участников и регистраций

@@ -1,0 +1,62 @@
+[
+{
+  "model": "organizations.organization",
+  "pk": 1,
+  "fields": {
+    "phone": "+7 (495) 123-45-67",
+    "email": "info@redcross.ru",
+    "name": "Красный Крест",
+    "city": "Москва",
+    "address": "ул. Чехова, д. 5"
+  }
+},
+{
+  "model": "organizations.organization",
+  "pk": 2,
+  "fields": {
+    "phone": "+7 (812) 987-65-43",
+    "email": "contact@blood-center.ru",
+    "name": "Центр Крови",
+    "city": "Санкт-Петербург",
+    "address": "Невский пр., 10"
+  }
+},
+{
+  "model": "participants.participant",
+  "pk": 1,
+  "fields": {
+    "phone": "+7 (999) 111-22-33",
+    "email": "ivanov@mail.ru",
+    "full_name": "Иванов Иван Иванович",
+    "birth_date": "1990-05-15",
+    "blood_type": "A+",
+    "active": true
+  }
+},
+{
+  "model": "participants.participant",
+  "pk": 2,
+  "fields": {
+    "phone": "+7 (999) 444-55-66",
+    "email": "petrova@mail.ru",
+    "full_name": "Петрова Мария Сергеевна",
+    "birth_date": "1995-08-20",
+    "blood_type": "O+",
+    "active": true
+  }
+},
+{
+  "model": "events.event",
+  "pk": 1,
+  "fields": {
+    "organization": 1,
+    "title": "День донора 2026",
+    "event_date": "2026-10-15",
+    "city": "Москва",
+    "address": "пр. Мира, 20",
+    "max_participants": 50,
+    "status": "PLANNED",
+    "description": "Ежегодная донорская акция"
+  }
+}
+]

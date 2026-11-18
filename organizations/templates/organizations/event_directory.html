@@ -6,8 +6,8 @@
     {% for item in items %}
       <article class="card card-body">
         <h2 class="h4"><a href="{% url 'events:detail' item.id %}">{{ item.title }}</a></h2>
-        <p>{{ item.event_date }} · {{ item.city }}</p>
-        <p>Организатор: <a href="{% url 'organizations:detail' item.organization_id %}">{{ item.organization_name }}</a></p>
+        <p>{{ item.event_date|date:"d.m.Y" }} · {{ item.city }}</p>
+        <p>Организатор: <a href="{% url 'organizations:detail' item.organization_id %}">{{ item.organization.name }}</a></p>
       </article>
     {% empty %}<p class="empty-state">Пока нет данных.</p>{% endfor %}
   </div>

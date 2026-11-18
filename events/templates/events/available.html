@@ -14,7 +14,7 @@
         <article class="card card-body">
           <h2 class="h4"><a href="{% url 'events:detail' item.id %}">{{ item.title }}</a></h2>
           <p>{{ item.event_date|date:"d.m.Y" }} · {{ item.city }}</p>
-          <p>Организатор: {{ item.organization_name }}</p>
+          <p>Организатор: {{ item.organization.name }}</p>
           <p><strong>Свободных мест: {{ item.free_places }}</strong></p>
         </article>
       {% empty %}<p class="empty-state">По выбранным условиям мероприятий со свободными местами нет.</p>{% endfor %}

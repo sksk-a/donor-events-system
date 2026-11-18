@@ -7,11 +7,13 @@ from django.test import override_settings
 
 from db.database import connection, fetch_all, fetch_one, queries
 from db.import_json import import_data
+from db.import_sqlite_to_orm import transfer
+from events.models import Event
 from tests.conftest import SOURCE
 
 
 @pytest.fixture
-def populated(sql_database, tmp_path):
+def populated(sql_database, tmp_path, db):
     data = json.loads(SOURCE.read_text(encoding="utf-8"))
     original = data["events"][0]
     data["events"] = [
@@ -33,6 +35,7 @@ def populated(sql_database, tmp_path):
     source = tmp_path / "fixture.json"
     source.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     import_data(source, sql_database)
+    transfer(sql_database)
     return data
 
 
@@ -123,10 +126,8 @@ def test_user_search_validation_and_injection(client, populated):
     assert fetch_one("event_totals")["total"] == 6
 
 
-def test_pages_show_sqlite_changes_without_reading_json(client, populated):
-    with connection() as conn:
-        conn.execute("UPDATE events SET title = 'Изменено в SQLite' WHERE id = 1")
-        conn.commit()
+def test_pages_show_orm_changes_without_reading_json(client, populated):
+    Event.objects.filter(pk=1).update(title="Изменено в SQLite")
     with override_settings(JSON_DATA_FILE="missing-file.json"):
         assert "Изменено в SQLite" in client.get("/events/").content.decode()
         active = client.get("/registrations/active/").content.decode()

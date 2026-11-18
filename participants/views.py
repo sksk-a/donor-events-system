@@ -1,19 +1,11 @@
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 
-from app.models import Participant
-from db.catalog import get_model, list_models
+from .models import Participant
 
 
 def list_view(request):
-    context = {"items": list_models("participants_list", Participant)}
-    return render(request, "participants/list.html", context)
+    return render(request, "participants/list.html", {"items": Participant.objects.order_by("full_name", "id")})
 
 
 def detail(request, entity_id):
-    item = get_model("participant_detail", Participant, entity_id)
-    context = {"item": item}
-
-    return render(
-        request, "participants/detail.html", context,
-        status=404 if item is None else 200,
-    )
+    return render(request, "participants/detail.html", {"item": get_object_or_404(Participant, pk=entity_id)})

@@ -1,28 +1,21 @@
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 
-from app.models import Event, Organization
-from db.catalog import get_model, list_models
-from db.database import fetch_all
+from events.models import Event
+from .models import Organization
 
 
 def list_view(request):
-    context = {"items": list_models("organizations_list", Organization)}
-    return render(request, "organizations/list.html", context)
+    return render(request, "organizations/list.html", {"items": Organization.objects.order_by("name", "id")})
 
 
 def detail(request, entity_id):
-    item = get_model("organization_detail", Organization, entity_id)
-    context = {"item": item}
-
-    context["events"] = list_models("organization_events", Event, (item.id,)) if item else []
-
-    return render(
-        request, "organizations/detail.html", context,
-        status=404 if item is None else 200,
-    )
+    item = get_object_or_404(Organization, pk=entity_id)
+    return render(request, "organizations/detail.html", {
+        "item": item, "events": item.events.order_by("event_date", "id"),
+    })
 
 
 def event_directory(request):
     return render(request, "organizations/event_directory.html", {
-        "items": fetch_all("events_organizations"),
+        "items": Event.objects.select_related("organization").order_by("organization__name", "event_date", "id"),
     })

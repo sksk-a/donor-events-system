@@ -16,12 +16,16 @@ django.setup()
 from app.models import Event, EventStatus  # noqa: E402
 from app.utils.web_data import load_catalog  # noqa: E402
 from db.import_json import import_data  # noqa: E402
+from db.import_sqlite_to_orm import MODELS, transfer  # noqa: E402
 
 
 @contextmanager
 def sql_catalog(path, tmp_path):
     target = tmp_path / "custom.sqlite"
     import_data(path, target)
+    for _, model in reversed(MODELS):
+        model.objects.all().delete()
+    transfer(target)
     with override_settings(JSON_DATA_FILE=path, DONOR_SQLITE_FILE=target):
         yield
 

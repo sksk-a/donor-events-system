@@ -4,11 +4,16 @@
   <header class="page-heading">
     <p class="eyebrow">Сервис донорских мероприятий</p>
     <h1>{% if active_only %}Активные регистрации{% else %}Регистрации{% endif %}</h1>
-    <p class="text-secondary">Всего: {{ items|length }}</p>
+    <p class="text-secondary">Всего: {{ page_obj.paginator.count }}</p>
     <p><a href="{% url 'registrations:list' %}">Все регистрации</a> ·
        <a href="{% url 'registrations:active' %}">Активные регистрации</a> ·
        <a href="{% url 'registrations:statistics' %}">Статистика</a></p>
   </header>
+  <form method="get" class="card card-body mb-4">
+    {{ filter_form.as_p }}
+    <p><button class="btn btn-danger" type="submit">Применить</button>
+      <a href="{% if active_only %}{% url 'registrations:active' %}{% else %}{% url 'registrations:list' %}{% endif %}">Сбросить</a></p>
+  </form>
   <div class="entity-grid">
     {% for item in items %}
       {% include "registrations/includes/card.html" with item=item only %}
@@ -16,4 +21,13 @@
       <div class="empty-state"><h2 class="h4">Пока нет данных.</h2><p>В этом разделе ещё нет записей.</p></div>
     {% endfor %}
   </div>
+  {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="mt-4" aria-label="Страницы регистраций">
+      <ul class="pagination">
+        {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="{% querystring page=page_obj.previous_page_number %}">Назад</a></li>{% endif %}
+        <li class="page-item"><span class="page-link" aria-current="page">{{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="{% querystring page=page_obj.next_page_number %}">Далее</a></li>{% endif %}
+      </ul>
+    </nav>
+  {% endif %}
 {% endblock %}

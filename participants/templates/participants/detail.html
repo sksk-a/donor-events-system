@@ -7,7 +7,7 @@
     <article class="card detail-card"><div class="card-body">
       <dl class="details">
         <div><dt>Дата рождения</dt><dd>{{ item.birth_date|date:"d.m.Y" }}</dd></div>
-        <div><dt>Группа крови</dt><dd>{{ item.blood_type.value }}</dd></div>
+        <div><dt>Группа крови</dt><dd>{{ item.get_blood_type_display }}</dd></div>
         <div><dt>Телефон</dt><dd>{{ item.phone }}</dd></div>
         <div><dt>Email</dt><dd>{{ item.email|default:"Не указан" }}</dd></div>
       </dl>

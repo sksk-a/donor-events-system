@@ -1,17 +1,16 @@
 from django.shortcuts import render
 
-from app.models import Event, Organization, Participant, Registration
-from db.catalog import list_models
+from events.models import Event
+from organizations.models import Organization
+from participants.models import Participant
+from registrations.models import Registration
 
 
 def index(request):
-    context = {
-        "events": list_models("events_list", Event),
-        "organizations": list_models("organizations_list", Organization),
-        "participants": list_models("participants_list", Participant),
-        "registrations": list_models("registrations_list", Registration),
-    }
-    return render(request, "homepage/index.html", context)
+    return render(request, "homepage/index.html", {
+        "events": Event.objects.all(), "organizations": Organization.objects.all(),
+        "participants": Participant.objects.all(), "registrations": Registration.objects.all(),
+    })
 
 
 def page_not_found(request, exception):

@@ -1,4 +1,4 @@
-"""Веб-данные ПР7: отдельная SQLite-база через sqlite3, без предметных ORM-моделей."""
+"""ПР9: предметные данные и служебные таблицы управляются Django ORM и миграциями."""
 import os
 from pathlib import Path
 
@@ -36,10 +36,11 @@ TEMPLATES = [{
 }]
 WSGI_APPLICATION = "donor_site.wsgi.application"
 ASGI_APPLICATION = "donor_site.asgi.application"
-# Здесь только служебные таблицы Django. Предметная БД указана отдельно ниже.
+# База ПР7 остаётся отдельным источником для команды import_pr7.
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 DATABASES = {"default": {
     "ENGINE": "django.db.backends.sqlite3",
-    "NAME": BASE_DIR / "db.sqlite3",
+    "NAME": os.environ.get("DJANGO_DB_FILE", str(BASE_DIR / "db.sqlite3")),
 }}
 LANGUAGE_CODE = "ru-ru"
 TIME_ZONE = "Europe/Moscow"
