@@ -10,6 +10,7 @@
         <div><dt>Город</dt><dd>{{ item.city }}</dd></div>
         <div><dt>Адрес</dt><dd>{{ item.address }}</dd></div>
         <div><dt>Лимит мест</dt><dd>{{ item.max_participants }}</dd></div>
+        <div><dt>Масштабная акция</dt><dd>{{ item.is_large|yesno:"Да,Нет" }}</dd></div>
         <div><dt>Описание</dt><dd>{{ item.description|default:"Описание пока не добавлено" }}</dd></div>
       </dl>
 

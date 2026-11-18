@@ -19,8 +19,9 @@ def list_view(request):
     return render(request, "events/list.html", {"items": items, "filter_form": form})
 
 
-def detail(request, entity_id):
-    item = get_object_or_404(with_free_places(), pk=entity_id)
+def detail(request, entity_id=None, slug=None):
+    lookup = {"slug": slug} if slug is not None else {"pk": entity_id}
+    item = get_object_or_404(with_free_places(), **lookup)
     return render(request, "events/detail.html", {
         "item": item, "organization": item.organization, "free_places": max(0, item.free_places),
     })

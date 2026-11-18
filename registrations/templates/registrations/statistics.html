@@ -5,6 +5,7 @@
   <section class="card card-body mb-4">
     <h2 class="h4">Общие показатели</h2>
     <p>Регистраций: {{ registration_totals.total }}. Занятых мест: {{ registration_totals.occupied }}.</p>
+    <p>Активных: {{ registration_totals.active }}. Отменённых: {{ registration_totals.cancelled }}. Посещённых: {{ registration_totals.completed }}.</p>
     <p>Мероприятий: {{ event_totals.total }}. Общая вместимость: {{ event_totals.capacity }}.</p>
     <p>Средняя вместимость: {{ event_totals.average_capacity|floatformat:1 }}.
        Минимальная: {{ event_totals.min_capacity }}. Максимальная: {{ event_totals.max_capacity }}.</p>

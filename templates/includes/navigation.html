@@ -7,7 +7,7 @@
     </a>
     <nav class="site-nav" aria-label="Основная навигация">
       <a href="{% url 'homepage:index' %}" {% if request.resolver_match.namespace == 'homepage' %}aria-current="page"{% endif %}>Главная</a>
-      <a href="{% url 'events:list' %}" {% if request.resolver_match.namespace == 'events' %}aria-current="page"{% endif %}>Мероприятия</a>
+      <a href="{% url 'events:list' %}" {% if request.resolver_match.namespace == 'events' %}aria-current="page"{% endif %}>Мероприятия ({{ events_count }})</a>
       <a href="{% url 'organizations:list' %}" {% if request.resolver_match.namespace == 'organizations' %}aria-current="page"{% endif %}>Организации</a>
       <a href="{% url 'participants:list' %}" {% if request.resolver_match.namespace == 'participants' %}aria-current="page"{% endif %}>Участники</a>
       <a href="{% url 'registrations:list' %}" {% if request.resolver_match.namespace == 'registrations' %}aria-current="page"{% endif %}>Регистрации</a>

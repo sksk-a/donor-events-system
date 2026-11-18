@@ -1,6 +1,111 @@
 # Сервис организации донорских мероприятий
 
-## Текущий этап ПР9 — модели и Django ORM
+## Текущий этап ПР10 — Django Admin и работа с ORM
+
+ПР10 продолжает ПР9 в том же проекте. Для текущего запуска:
+
+```powershell
+cd "C:\Users\Redmi\Desktop\3 курс универ\ТРПНБФ ИП\donor-events-system"
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe manage.py migrate
+# Только для первичного наполнения новой БД (один из двух вариантов):
+.\.venv\Scripts\python.exe manage.py import_pr7
+# Либо: .\.venv\Scripts\python.exe manage.py loaddata data/pr10_fixture.json
+.\.venv\Scripts\python.exe manage.py createsuperuser
+.\.venv\Scripts\python.exe manage.py runserver
+```
+
+При отсутствии `.venv` сначала выполнить `python -m venv .venv`.
+Обычный сайт — `http://127.0.0.1:8000/`, административная панель —
+`http://127.0.0.1:8000/admin/`. Имя и пароль администратора задаются пользователем
+через `createsuperuser`; готовые пароли и учётные записи в репозиторий не включены.
+При повторном запуске достаточно runserver; повторный импорт может обновить данные
+с совпадающими ID. Все ORM-таблицы находятся в `db.sqlite3`, база ПР7 остаётся источником.
+
+### Административная панель
+
+Для Organization, Participant, Event и Registration настроены русские названия,
+`list_display`, `search_fields`, `list_filter`, `ordering`, `list_per_page=20`.
+В регистрациях показываются названия связанных объектов, поиск работает по ФИО,
+названию мероприятия и организатору. Inline регистраций отображается в карточках
+мероприятия и участника; примечания представлены компактным Textarea.
+Доступ контролируется is_staff и разрешениями Django. Действие массовой отмены
+требует change-разрешения. `list_select_related` уменьшает дополнительные запросы.
+
+Админка проверяет типы полей, уникальность и права, но автоматическое предотвращение
+превышения вместимости при создании регистрации на этом этапе **не реализовано**.
+Ограничения PROTECT/UNIQUE/CHECK ПР9 сохраняются.
+
+### QuerySet слаги и вычисляемое поле
+
+- `RegistrationQuerySet` содержит `active()`, `cancelled()`, `completed()`,
+  `for_date()`, `occupied()` и `for_listing()`. Менеджер создан через `as_manager()`.
+- `for_listing()` использует `annotate(F(...))` и `values()` для имён участника,
+  мероприятия и организации одним JOIN-запросом. Шаблон получает словари,
+  поэтому `select_related()` для этой проекции не нужен. Карточка получает модели
+  через `select_related("event", "participant")`.
+- Статусы предметной области сохранены: REGISTERED/CONFIRMED — активные на акциях
+  PLANNED/OPEN, CANCELLED — отменённые, ATTENDED — посещённые (completed()).
+  Статистика отдельно показывает активные, отменённые и посещённые записи.
+- У Event появился уникальный ASCII-slug с транслитерацией; действующие записи
+  заполнены data migration. Новые создают slug при save(), совпадения получают суффикс.
+  `get_absolute_url()` возвращает `/events/by-slug/<slug>/`; старый URL по ID сохранён.
+  Изменение названия автоматически не ломает существующий адрес.
+- `Event.is_large` — хранимое `GeneratedField`: база вычисляет `max_participants >= 100`.
+  Поле доступно только для чтения; после изменения вместимости актуальное значение
+  можно получить через `refresh_from_db()` или новый `get()`.
+- `homepage.context_processors.site_context` передаёт `site_name` и `events_count`;
+  счётчик используется в общей навигации. Это один дополнительный COUNT-запрос на страницу.
+
+Фильтрация, сортировка и пагинация ПР9 сохранены. Новые миграции:
+events.0003 (slug + GeneratedField), events.0004 и registrations.0002 (русские подписи).
+Fixture для текущего состояния — `data/pr10_fixture.json`, без auth-пользователей.
+
+### Debug Toolbar и проверка запросов
+
+Toolbar установлен как зависимость, включается только явно при DEBUG=True:
+
+```powershell
+$env:DJANGO_DEBUG_TOOLBAR = "1"
+.\.venv\Scripts\python.exe manage.py runserver
+# После остановки сервера Ctrl+C:
+Remove-Item Env:DJANGO_DEBUG_TOOLBAR
+```
+
+Панель доступна локально для 127.0.0.1/::1; при `DJANGO_DEBUG=0` маршруты панели
+не подключаются независимо от переменной включения. В SQL-панели можно увидеть
+JOIN, COUNT и запросы формы/пагинатора. Один JOIN выборки не означает единственный
+запрос всей страницы: например, общий контекст дополнительно запрашивает счётчик.
+
+```powershell
+.\.venv\Scripts\python.exe -B manage.py profile_orm
+.\.venv\Scripts\python.exe -B manage.py analyze_orm
+# Для проверки SQLPanel в реальном локальном HTML-ответе:
+$env:DJANGO_DEBUG_TOOLBAR = "1"
+.\.venv\Scripts\python.exe -B manage.py analyze_orm --toolbar
+Remove-Item Env:DJANGO_DEBUG_TOOLBAR
+.\.venv\Scripts\python.exe -B manage.py check
+.\.venv\Scripts\python.exe -B manage.py makemigrations --check --dry-run
+.\.venv\Scripts\python.exe -B -m pytest -v
+.\.venv\Scripts\python.exe -B -m flake8 . --extend-exclude=venv
+```
+
+`profile_orm` создаёт три учебные регистрации внутри откатываемой транзакции:
+список без оптимизации — 10 SQL, с select_related — 1, с annotate/values — 1;
+карточка без оптимизации — 3 SQL, с select_related — 1. Рабочие данные не меняются.
+`analyze_orm` читает существующие записи; при пустой таблице объясняет отсутствие выборки.
+
+Итоговый прогон ПР10: **122 теста**, check/flake8/makemigrations check без ошибок.
+В браузере на отдельной копии БД проверены admin, поиск/фильтр статуса, inline,
+пагинация с сохранением условий, статистика, slug, доступные места и SQLPanel.
+Реальные снимки — `docs/screenshots/pr10/`; временный сервер после проверки остановлен.
+Сценарий защиты, включая вопросы 25–26: `docs/PR10_DEFENSE.md`.
+Материалы Яндекс Практикума подтверждаются отдельно в учебном аккаунте.
+
+## История ПР9 — модели и Django ORM
+
+Раздел ниже фиксирует этап ПР9 до расширений ПР10. Для текущего состояния используйте
+команды и fixture ПР10 выше; пример `pr9_fixture.json` относится к схеме ПР9.
 
 Веб-сайт работает через Django ORM и миграции в `db.sqlite3`. Предметные модели
 расположены в `organizations/models.py`, `participants/models.py`, `events/models.py`

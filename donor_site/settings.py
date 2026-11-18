@@ -7,9 +7,11 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "local-study-donor-events-only"
 DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 INSTALLED_APPS = [
+    "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
+    "django.contrib.messages",
     "django.contrib.staticfiles",
     "homepage",
     "events",
@@ -23,6 +25,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 ROOT_URLCONF = "donor_site.urls"
@@ -32,6 +35,9 @@ TEMPLATES = [{
     "APP_DIRS": True,
     "OPTIONS": {"context_processors": [
         "django.template.context_processors.request",
+        "django.contrib.auth.context_processors.auth",
+        "django.contrib.messages.context_processors.messages",
+        "homepage.context_processors.site_context",
     ]},
 }]
 WSGI_APPLICATION = "donor_site.wsgi.application"
@@ -58,3 +64,10 @@ DONOR_SQLITE_FILE = Path(os.environ.get(
 ))
 if not DONOR_SQLITE_FILE.is_absolute():
     DONOR_SQLITE_FILE = BASE_DIR / DONOR_SQLITE_FILE
+
+# Инструмент локальной разработки включается явно; при DEBUG=False недоступен.
+DEBUG_TOOLBAR_ENABLED = DEBUG and os.environ.get("DJANGO_DEBUG_TOOLBAR", "0") == "1"
+if DEBUG_TOOLBAR_ENABLED:
+    INSTALLED_APPS += ["debug_toolbar"]
+    MIDDLEWARE.insert(1, "debug_toolbar.middleware.DebugToolbarMiddleware")
+INTERNAL_IPS = ["127.0.0.1", "::1"]

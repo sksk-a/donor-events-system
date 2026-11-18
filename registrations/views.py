@@ -13,15 +13,13 @@ def _list(request, active_only=False):
     if params.get("sort") not in SORT_FIELDS:
         params["sort"] = "date"
     form = RegistrationFilterForm(params)
-    items = Registration.objects.select_related("participant", "event__organization")
+    items = Registration.objects.all()
     if active_only:
-        items = items.exclude(status__in=[Registration.Status.CANCELLED, Registration.Status.ATTENDED]).filter(
-            event__status__in=[Event.Status.PLANNED, Event.Status.OPEN],
-        )
+        items = items.active()
     if form.is_valid():
         values = form.cleaned_data
         if values["date"]:
-            items = items.filter(registration_date=values["date"])
+            items = items.for_date(values["date"])
         if values["event"]:
             items = items.filter(event=values["event"])
         if values["participant"]:
@@ -33,7 +31,7 @@ def _list(request, active_only=False):
         items = items.order_by(*SORT_FIELDS[values["sort"] or "date"])
     else:
         items = items.none().order_by("id")
-    page_obj = Paginator(items, 5).get_page(request.GET.get("page"))
+    page_obj = Paginator(items.for_listing(), 5).get_page(request.GET.get("page"))
     return render(request, "registrations/list.html", {
         "items": page_obj, "page_obj": page_obj, "filter_form": form, "active_only": active_only,
     })
@@ -60,6 +58,9 @@ def statistics(request):
         "form": form,
         "registration_totals": Registration.objects.aggregate(
             total=Count("id"), occupied=Count("id", filter=~Q(status="CANCELLED")),
+            active=Count("id", filter=Q(status__in=[Registration.Status.REGISTERED, Registration.Status.CONFIRMED], event__status__in=[Event.Status.PLANNED, Event.Status.OPEN])),
+            cancelled=Count("id", filter=Q(status=Registration.Status.CANCELLED)),
+            completed=Count("id", filter=Q(status=Registration.Status.ATTENDED)),
         ),
         "event_totals": Event.objects.aggregate(
             total=Count("id"), capacity=Sum("max_participants", default=0),

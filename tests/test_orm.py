@@ -96,7 +96,7 @@ def test_pagination_filters_and_parameters(client, many_registrations):
     text = response.content.decode()
     assert "page=2" in text and "sort=participant" in text and "date=2026-10-01" in text
     second = client.get("/registrations/", {**params, "page": 2}).context["page_obj"]
-    assert second.number == 2 and second[0].participant.full_name == "Донор 06"
+    assert second.number == 2 and second[0]["participant_name"] == "Донор 06"
     for value, expected in [("abc", 1), (999, 3), (-1, 3)]:
         assert client.get("/registrations/", {**params, "page": value}).context["page_obj"].number == expected
     assert client.get("/registrations/", {**params, "city": "Казань"}).context["page_obj"].paginator.count == 0
